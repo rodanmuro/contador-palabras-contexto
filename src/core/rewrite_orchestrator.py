@@ -9,13 +9,14 @@ Coordina:
 
 from typing import Optional, List
 from models.dto import (
-    InputRequest, OutputResult, AttemptRecord, AttemptStatus, Mode
+    InputRequest, OutputResult, AttemptRecord, AttemptStatus, Mode, TokenMetrics
 )
 from core.word_counter import WordCounter
 from core.llm_client import LLMClient
 from core.validators.hard_rules import HardRulesValidator
 from core.validators.semantic import SemanticValidator
 from utils.logger import log_session
+from config import AVAILABLE_MODELS
 
 
 class RewriteOrchestrator:
@@ -99,8 +100,15 @@ class RewriteOrchestrator:
         best_candidate = None
         best_similarity = -1.0
         
+        # Actualizar modelo en el cliente LLM
+        self.llm_client.model = request.model
+        self.llm_client.model_config = AVAILABLE_MODELS.get(request.model, AVAILABLE_MODELS["gpt-4o-mini"])
+        
         for attempt_num in range(1, request.max_attempts + 1):
             log_session(session_id, f"Intento {attempt_num}/{request.max_attempts}")
+            
+            # Inicializar métricas de token para este intento
+            token_metrics = None
             
             # Calcular delta respecto al rango
             delta = None
@@ -109,7 +117,7 @@ class RewriteOrchestrator:
             
             # Llamar al LLM para reescribir
             try:
-                proposed_text = self.llm_client.rewrite_text(
+                proposed_text, token_metrics = self.llm_client.rewrite_text(
                     text=request.input_text,
                     min_words=request.min_words,
                     max_words=request.max_words,
@@ -126,7 +134,8 @@ class RewriteOrchestrator:
                     proposed_text="",
                     word_count=0,
                     status=AttemptStatus.OUT_OF_RANGE,
-                    error_message=str(e)
+                    error_message=str(e),
+                    token_metrics=token_metrics
                 )
                 attempts.append(record)
                 continue
@@ -134,6 +143,17 @@ class RewriteOrchestrator:
             # Contar palabras de la propuesta
             proposed_count = self.word_counter.count(proposed_text)
             log_session(session_id, f"Propuesta: {proposed_count} palabras")
+            
+            # Calcular similitud semántica (para todos los casos)
+            threshold = (
+                0.85 if request.mode == Mode.STRICT
+                else 0.75
+            )
+            semantic_valid, similarity, semantic_reason = (
+                self.semantic_validator.validate(
+                    request.input_text, proposed_text, threshold
+                )
+            )
             
             # Verificar si está dentro del rango
             in_range = request.min_words <= proposed_count <= request.max_words
@@ -145,7 +165,9 @@ class RewriteOrchestrator:
                     proposed_text=proposed_text,
                     word_count=proposed_count,
                     status=AttemptStatus.OUT_OF_RANGE,
-                    delta=delta_actual
+                    delta=delta_actual,
+                    similarity_score=similarity,
+                    token_metrics=token_metrics
                 )
                 attempts.append(record)
                 best_candidate = proposed_text
@@ -165,23 +187,15 @@ class RewriteOrchestrator:
                     status=AttemptStatus.REJECTED_BY_HARD_RULES,
                     delta=delta_actual,
                     hard_rules_passed=False,
-                    error_message=hard_rules_reason
+                    error_message=hard_rules_reason,
+                    similarity_score=similarity,
+                    token_metrics=token_metrics
                 )
                 attempts.append(record)
                 best_candidate = proposed_text
                 continue
             
-            # 2. Similitud semántica
-            threshold = (
-                0.85 if request.mode == Mode.STRICT
-                else 0.75
-            )
-            semantic_valid, similarity, semantic_reason = (
-                self.semantic_validator.validate(
-                    request.input_text, proposed_text, threshold
-                )
-            )
-            
+            # 2. Similitud semántica (ya calculada arriba)
             if not semantic_valid:
                 record = AttemptRecord(
                     attempt_number=attempt_num,
@@ -190,7 +204,8 @@ class RewriteOrchestrator:
                     status=AttemptStatus.REJECTED_BY_SEMANTIC_SIMILARITY,
                     delta=delta_actual,
                     similarity_score=similarity,
-                    error_message=semantic_reason
+                    error_message=semantic_reason,
+                    token_metrics=token_metrics
                 )
                 attempts.append(record)
                 if similarity > best_similarity:
@@ -205,7 +220,8 @@ class RewriteOrchestrator:
                 word_count=proposed_count,
                 status=AttemptStatus.ACCEPTED,
                 delta=delta_actual,
-                similarity_score=similarity
+                similarity_score=similarity,
+                token_metrics=token_metrics
             )
             attempts.append(record)
             log_session(session_id, f"✓ ACEPTADO en intento {attempt_num}")
@@ -222,7 +238,10 @@ class RewriteOrchestrator:
                 validation_reason="Pasó todas las validaciones",
                 target_words=target_words,
                 mode=request.mode,
-                session_id=session_id
+                session_id=session_id,
+                model=request.model,
+                total_token_metrics=self._calculate_total_token_metrics(attempts),
+                total_cost_usd=self._calculate_total_cost(attempts)
             )
         
         # Fin de reintentos sin aceptación
@@ -242,7 +261,10 @@ class RewriteOrchestrator:
                 target_words=target_words,
                 mode=request.mode,
                 session_id=session_id,
-                error="Se retorna mejor candidato por similitud"
+                model=request.model,
+                error="Se retorna mejor candidato por similitud",
+                total_token_metrics=self._calculate_total_token_metrics(attempts),
+                total_cost_usd=self._calculate_total_cost(attempts)
             )
         else:
             return OutputResult(
@@ -255,7 +277,10 @@ class RewriteOrchestrator:
                 attempts=attempts,
                 mode=request.mode,
                 session_id=session_id,
-                error="No se pudo generar propuestas válidas"
+                model=request.model,
+                error="No se pudo generar propuestas válidas",
+                total_token_metrics=self._calculate_total_token_metrics(attempts),
+                total_cost_usd=self._calculate_total_cost(attempts)
             )
 
     def _validate_request(self, request: InputRequest) -> bool:
@@ -287,3 +312,56 @@ class RewriteOrchestrator:
             return max_words
         else:
             return original_count
+
+    def _calculate_total_cost(self, attempts: List[AttemptRecord]) -> float:
+        """
+        Calcula el costo total en USD sumando todos los token_metrics de los intentos.
+        
+        Args:
+            attempts: Lista de AttemptRecord con token_metrics.
+            
+        Returns:
+            float: Costo total en USD (suma de todos los intentos).
+        """
+        total_cost = 0.0
+        for attempt in attempts:
+            if attempt.token_metrics and attempt.token_metrics.cost_usd:
+                total_cost += attempt.token_metrics.cost_usd
+        return round(total_cost, 4)
+
+    def _calculate_total_token_metrics(self, attempts: List[AttemptRecord]) -> Optional[TokenMetrics]:
+        """
+        Calcula métricas agregadas de tokens de todos los intentos.
+        
+        Args:
+            attempts: Lista de AttemptRecord con token_metrics.
+            
+        Returns:
+            TokenMetrics agregadas, o None si no hay métricas.
+        """
+        total_input = 0
+        total_cached = 0
+        total_output = 0
+        total_cost = 0.0
+        model = ""
+        
+        for attempt in attempts:
+            if attempt.token_metrics:
+                total_input += attempt.token_metrics.input_tokens
+                total_cached += attempt.token_metrics.cached_tokens
+                total_output += attempt.token_metrics.output_tokens
+                total_cost += attempt.token_metrics.cost_usd
+                if not model:
+                    model = attempt.token_metrics.model
+        
+        if total_input == 0 and total_output == 0:
+            return None
+        
+        metrics = TokenMetrics(
+            input_tokens=total_input,
+            cached_tokens=total_cached,
+            output_tokens=total_output,
+            cost_usd=round(total_cost, 6),
+            model=model
+        )
+        return metrics

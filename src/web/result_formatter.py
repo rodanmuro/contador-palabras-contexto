@@ -27,7 +27,7 @@ class ResultFormatter:
         """
         formatted_attempts = []
         for attempt in result.attempts:
-            formatted_attempts.append({
+            attempt_data = {
                 "attempt_number": attempt.attempt_number,
                 "proposed_text": attempt.proposed_text,
                 "word_count": attempt.word_count,
@@ -36,7 +36,11 @@ class ResultFormatter:
                 "similarity_score": round(attempt.similarity_score, 3) if attempt.similarity_score else None,
                 "hard_rules_passed": attempt.hard_rules_passed,
                 "error_message": attempt.error_message
-            })
+            }
+            # Agregar métricas de tokens si existen
+            if attempt.token_metrics:
+                attempt_data["token_metrics"] = attempt.token_metrics.to_dict()
+            formatted_attempts.append(attempt_data)
         
         return {
             "success": result.status == "ACCEPTED",
@@ -49,9 +53,13 @@ class ResultFormatter:
             "validation_reason": result.validation_reason,
             "target_words": result.target_words,
             "mode": result.mode.value if result.mode else None,
+            "model": result.model,
             "error": result.error,
             "attempts": formatted_attempts,
-            "summary": ResultFormatter._generate_summary(result)
+            "summary": ResultFormatter._generate_summary(result),
+            # Nuevos campos de costo
+            "total_cost_usd": round(result.total_cost_usd, 6),
+            "token_metrics": result.total_token_metrics.to_dict() if result.total_token_metrics else None
         }
 
     @staticmethod

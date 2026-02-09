@@ -207,6 +207,15 @@ textarea {
     padding: 15px;
     border-radius: var(--border-radius);
     text-align: center;
+    border-left: 4px solid var(--color-primary);
+}
+
+.metric:nth-child(even) {
+    border-left-color: #17a2b8;
+}
+
+.metric:nth-child(3n) {
+    border-left-color: #6f42c1;
 }
 
 .metric-label {

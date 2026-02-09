@@ -41,6 +41,7 @@ def create_routes(orchestrator: RewriteOrchestrator):
             "input_text": "texto a reescribir",
             "min_words": 10,
             "max_words": 50,
+            "model": "gpt-4o-mini",
             "mode": "balanced || strict",
             "max_attempts": 5
         }
@@ -52,6 +53,8 @@ def create_routes(orchestrator: RewriteOrchestrator):
             "original_word_count": int,
             "final_word_count": int,
             "total_attempts": int,
+            "total_cost_usd": float,
+            "token_metrics": {...},
             ...
         }
         """
@@ -70,11 +73,13 @@ def create_routes(orchestrator: RewriteOrchestrator):
             # Construir solicitud
             mode_str = data.get('mode', 'balanced').lower()
             mode = Mode.STRICT if mode_str == 'strict' else Mode.BALANCED
+            model = data.get('model', 'gpt-4o-mini')
             
             input_request = InputRequest(
                 input_text=data['input_text'],
                 min_words=data['min_words'],
                 max_words=data['max_words'],
+                model=model,
                 mode=mode,
                 max_attempts=data.get('max_attempts', 5),
                 session_id=session_id

@@ -45,8 +45,8 @@ class SemanticValidator:
         
         try:
             # Obtener embeddings
-            original_embedding = self.llm_client.get_embedding(original_text)
-            rewritten_embedding = self.llm_client.get_embedding(rewritten_text)
+            original_embedding, _ = self.llm_client.get_embedding(original_text)
+            rewritten_embedding, _ = self.llm_client.get_embedding(rewritten_text)
             
             # Calcular similitud coseno
             similarity = self._cosine_similarity(original_embedding, rewritten_embedding)
