@@ -1,8 +1,11 @@
 
 # Contexto inicial
 El agente LLM deberá leer el presente archivo al iniciar una nueva sesión, pues son las ideas generales de trabajo.
-Luego de leer el presente archivo, leerá  `planeacion/plan-automatizacion.md` para comprender de qué trata este proyecto y su objetivo principal; el archivo `planeacion/plan-automatizacion.md` describe de qué se tratá concretamente el software o app a desarrollar, la solución que se quiere obtener con este software. el archivo `planeacion/plan-automatizacion.md` describe directamente al LLM cómo entender el proyecto.
-Luego deberá leer `planeacion/bitacora-template.md`, un archivo que le dará las ideas generales de cómo crear bitácoras cada vez que se cumplan una serie  de pasos dentro del desarrollo del proyecto.
+Luego de leer el presente archivo, leerá  `planeacion/plan-contador-palabras-contexto.md` para comprender de qué trata este proyecto y su objetivo principal; el archivo `planeacion/plan-contador-palabras-contexto.md` describe de qué se tratá concretamente el software o app a desarrollar, la solución que se quiere obtener con este software. el archivo `planeacion/plan-contador-palabras-contexto.md` describe directamente al LLM cómo entender el proyecto.
+Luego deberá leer `bitacoras/bitacora-template.md`, un archivo que le dará las ideas generales de cómo crear bitácoras cada vez que se cumplan una serie  de pasos dentro del desarrollo del proyecto.
+
+# Destino de la codifición
+Todo el código, variables de entorno, entornos virtuales, entre otros será guardado dentro de la carpeta `src/`
 
 # Flujo previo a codificar
 El agente LLM siempre deberá presentar un plan de acción; un conjunto de pasos, de cómo piensa resolver el problema que el cliente le está pidiendo resolver, esto con el fin apruebe el flujo de trabajo
@@ -13,7 +16,7 @@ El agente LLM siempre debe pensar en descomponer las tareas, para cumplir el pri
 El agente LLM siempre debe pensar en que se debe hacer software escalable, anticipando los errores que se pueden presentar
 
 # Metodología de bitácoras
-Cuando el usuario lo solicite se deben crear bitácoras siguiendo el formato que encontrarás en `planeacion/bitacora-template.md`. Los archivos de bitácora se almacenan en `bitacoras/` con nombre `XXX_MM_DD_AAAA_descripcion_corta.md`, donde:
+Cuando el usuario lo solicite se deben crear bitácoras siguiendo el formato que encontrarás en `bitacoras/bitacora-template.md`. Los archivos de bitácora se almacenan en `bitacoras/` con nombre `XXX_MM_DD_AAAA_descripcion_corta.md`, donde:
 
 - `XXX` es el consecutivo numérico que sigue al último registro (`000`, `001`, `002`, etc.).
 - `MM_DD_AAAA` representa la fecha actual del sistema (mes, día y año) en el momento de registrar la bitácora.
