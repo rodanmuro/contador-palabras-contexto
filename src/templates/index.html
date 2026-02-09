@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word-Range Rewriter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Word-Range Rewriter</h1>
+            <p>Reescribe textos dentro de rangos de palabras específicos</p>
+        </header>
+
+        <main>
+            <form id="rewriteForm" class="form-section">
+                <fieldset>
+                    <legend>Parámetros de Entrada</legend>
+                    
+                    <div class="form-group">
+                        <label for="inputText">Texto a reescribir:</label>
+                        <textarea 
+                            id="inputText" 
+                            name="inputText" 
+                            rows="6" 
+                            placeholder="Pega aquí el texto que deseas reescribir..."
+                            required></textarea>
+                        <span id="charCount" class="help-text">0 caracteres</span>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="minWords">Palabras mínimas:</label>
+                            <input 
+                                type="number" 
+                                id="minWords" 
+                                name="minWords" 
+                                value="10"
+                                min="1"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="maxWords">Palabras máximas:</label>
+                            <input 
+                                type="number" 
+                                id="maxWords" 
+                                name="maxWords" 
+                                value="50"
+                                min="1"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mode">Modo de reescritura:</label>
+                            <select id="mode" name="mode">
+                                <option value="balanced">Balanceado (más natural)</option>
+                                <option value="strict">Estricto (más literal)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="maxAttempts">Máximo de intentos:</label>
+                            <input 
+                                type="number" 
+                                id="maxAttempts" 
+                                name="maxAttempts" 
+                                value="5"
+                                min="1"
+                                max="10"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Reescribir</button>
+                        <button type="reset" class="btn btn-secondary">Limpiar</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <div id="resultSection" class="result-section hidden">
+                <fieldset>
+                    <legend>Resultado</legend>
+                    
+                    <div id="summary" class="summary hidden"></div>
+                    
+                    <div class="form-group">
+                        <label for="finalText">Texto reescrito:</label>
+                        <textarea 
+                            id="finalText" 
+                            readonly
+                            rows="6"></textarea>
+                        <span id="finalWordCount" class="help-text">0 palabras</span>
+                    </div>
+
+                    <div class="metrics">
+                        <div class="metric">
+                            <span class="metric-label">Palabras originales:</span>
+                            <span id="originalCount" class="metric-value">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Palabras finales:</span>
+                            <span id="finalCount" class="metric-value">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Total de intentos:</span>
+                            <span id="totalAttempts" class="metric-value">0</span>
+                        </div>
+                    </div>
+
+                    <div id="attemptsDetails" class="attempts-details hidden">
+                        <h3>Detalles de Intentos</h3>
+                        <div id="attemptsList"></div>
+                    </div>
+
+                    <div class="result-actions">
+                        <button id="copyBtn" class="btn btn-secondary">Copiar al portapapeles</button>
+                        <button id="downloadBtn" class="btn btn-secondary">Descargar reporte</button>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div id="errorSection" class="error-section hidden">
+                <p id="errorMessage"></p>
+                <button id="dismissError" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Word-Range Rewriter v0.1.0 | Desarrollado con Python + Flask + OpenAI</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
